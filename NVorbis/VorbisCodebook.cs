@@ -6,7 +6,7 @@
  *                                                                          *
  ***************************************************************************/
 using System;
-using System.Linq;
+using System.Collections.Generic;
 using System.IO;
 
 namespace NVorbis
@@ -43,87 +43,101 @@ namespace NVorbis
             InitLookupTable(packet);
         }
 
-        void InitTree(DataPacket packet)
-        {
-            bool sparse;
-            int total = 0;
+		void InitTree(DataPacket packet)
+		{
+			bool sparse;
+			int total = 0;
 
-            if (packet.ReadBit())
-            {
-                // ordered
-                var len = (int)packet.ReadBits(5) + 1;
-                for (var i = 0; i < Entries; )
-                {
-                    var cnt = (int)packet.ReadBits(Utils.ilog(Entries - i));
+			if (packet.ReadBit())
+			{
+				// ordered
+				var len = (int)packet.ReadBits(5) + 1;
+				for (var i = 0; i < Entries;)
+				{
+					var cnt = (int)packet.ReadBits(Utils.ilog(Entries - i));
 
-                    while (--cnt >= 0)
-                    {
-                        Lengths[i++] = len;
-                    }
+					while (--cnt >= 0)
+					{
+						Lengths[i++] = len;
+					}
 
-                    ++len;
-                }
-                total = 0;
-                sparse = false;
-            }
-            else
-            {
-                // unordered
-                sparse = packet.ReadBit();
-                for (var i = 0; i < Entries; i++)
-                {
-                    if (!sparse || packet.ReadBit())
-                    {
-                        Lengths[i] = (int)packet.ReadBits(5) + 1;
-                        ++total;
-                    }
-                    else
-                    {
-                        Lengths[i] = -1;
-                    }
-                }
-            }
-            MaxBits = Lengths.Max();
+					++len;
+				}
+				total = 0;
+				sparse = false;
+			}
+			else
+			{
+				// unordered
+				sparse = packet.ReadBit();
+				for (var i = 0; i < Entries; i++)
+				{
+					if (!sparse || packet.ReadBit())
+					{
+						Lengths[i] = (int)packet.ReadBits(5) + 1;
+						++total;
+					}
+					else
+					{
+						Lengths[i] = -1;
+					}
+				}
+			}
 
-            int sortedCount = 0;
-            int[] codewordLengths = null;
-            if (sparse && total >= Entries >> 2)
-            {
-                codewordLengths = new int[Entries];
-                Array.Copy(Lengths, codewordLengths, Entries);
+			int max = ((Lengths.Length > 0) ? Lengths[0] : 0);
+			foreach (int n in Lengths)
+			{
+				if (n > max)
+					max = n;
+			}
 
-                sparse = false;
-            }
+			//MaxBits = Lengths.Max();
+			MaxBits = max;
 
-            // compute size of sorted tables
-            if (sparse)
-            {
-                sortedCount = total;
-            }
-            else
-            {
-                sortedCount = 0;
-            }
+			int sortedCount = 0;
+			int[] codewordLengths = null;
+			if (sparse && total >= Entries >> 2)
+			{
+				codewordLengths = new int[Entries];
+				Array.Copy(Lengths, codewordLengths, Entries);
 
-            int sortedEntries = sortedCount;
+				sparse = false;
+			}
 
-            int[] values = null;
-            int[] codewords = null;
-            if (!sparse)
-            {
-                codewords = new int[Entries];
-            }
-            else if (sortedEntries != 0)
-            {
-                codewordLengths = new int[sortedEntries];
-                codewords = new int[sortedEntries];
-                values = new int[sortedEntries];
-            }
+			// compute size of sorted tables
+			if (sparse)
+			{
+				sortedCount = total;
+			}
+			else
+			{
+				sortedCount = 0;
+			}
 
-            if (!ComputeCodewords(sparse, sortedEntries, codewords, codewordLengths, len: Lengths, n: Entries, values: values)) throw new InvalidDataException();
+			int sortedEntries = sortedCount;
 
-            PrefixList = Huffman.BuildPrefixedLinkedList(values ?? Enumerable.Range(0, codewords.Length).ToArray(), codewordLengths ?? Lengths, codewords, out PrefixBitLength, out PrefixOverflowTree);
-        }
+			int[] values = null;
+			int[] codewords = null;
+			if (!sparse)
+			{
+				codewords = new int[Entries];
+			}
+			else if (sortedEntries != 0)
+			{
+				codewordLengths = new int[sortedEntries];
+				codewords = new int[sortedEntries];
+				values = new int[sortedEntries];
+			}
+
+
+			if (!ComputeCodewords(sparse, sortedEntries, codewords, codewordLengths, len: Lengths, n: Entries, values: values)) throw new InvalidDataException();
+			{
+				List<int> ranges = new List<int>();
+				for (int i = 0; i < codewords.Length; i++)
+					ranges.Add(i);
+				PrefixList = Huffman.BuildPrefixedLinkedList(values ?? ranges.ToArray(), codewordLengths ?? Lengths, codewords, out PrefixBitLength, out PrefixOverflowTree);
+			}
+		}
 
         bool ComputeCodewords(bool sparse, int sortedEntries, int[] codewords, int[] codewordLengths, int[] len, int n, int[] values)
         {

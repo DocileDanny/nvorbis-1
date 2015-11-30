@@ -7,7 +7,6 @@
  ***************************************************************************/
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
 
 namespace NVorbis
@@ -291,8 +290,16 @@ namespace NVorbis
                     _partitionClass[i] = (int)packet.ReadBits(4);
                 }
 
-                var maximum_class = _partitionClass.Max();
-                _classDimensions = new int[maximum_class + 1];
+				int max = ((_partitionClass.Length > 0) ? _partitionClass[0] : 0);
+				foreach (int n in _partitionClass)
+				{
+					if (n > max)
+						max = n;
+				}
+
+				//var maximum_class = _partitionClass.Max();
+				int maximum_class = max;
+				_classDimensions = new int[maximum_class + 1];
                 _classSubclasses = new int[maximum_class + 1];
                 _classMasterbooks = new VorbisCodebook[maximum_class + 1];
                 _classMasterBookIndex = new int[maximum_class + 1];

@@ -6,7 +6,6 @@
  *                                                                          *
  ***************************************************************************/
 using System;
-using System.Linq;
 using System.IO;
 
 namespace NVorbis
@@ -193,7 +192,18 @@ namespace NVorbis
                 var end = _end < blockSize / 2 ? _end : blockSize / 2;
                 var n = end - _begin;
 
-                if (n > 0 && doNotDecode.Contains(false))
+				bool isContain = false;
+				foreach (bool b in doNotDecode)
+				{
+					if (!b)
+					{
+						isContain = true;
+						break;
+					}
+				}
+
+                //if (n > 0 && doNotDecode.Contains(false))
+				if (n > 0 && isContain)
                 {
                     var partVals = n / _partitionSize;
                     

@@ -7,7 +7,6 @@
  ***************************************************************************/
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.IO;
 
@@ -181,12 +180,39 @@ namespace NVorbis
 
         bool ProcessStreamHeader(DataPacket packet)
         {
-            if (!packet.ReadBytes(7).SequenceEqual(new byte[] { 0x01, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 }))
-            {
-                // don't mark the packet as done... it might be used elsewhere
-                _glueBits += packet.Length * 8;
-                return false;
-            }
+			bool isSequenceEqual = true;
+			byte[] packetComparer = new byte[] { 0x01, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 };
+            byte[] packetData = packet.ReadBytes(7);
+
+			if (packetComparer.Length != packetData.Length)
+			{
+				isSequenceEqual = false;
+			}
+			else
+			{
+				for (int i = 0; i < packetData.Length; i++)
+				{
+					if (packetData[i] != packetComparer[i])
+					{
+						isSequenceEqual = false;
+						break;
+					}
+				}
+			}
+
+			//if (!packet.ReadBytes(7).SequenceEqual(new byte[] { 0x01, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 }))
+   //         {
+   //             // don't mark the packet as done... it might be used elsewhere
+   //             _glueBits += packet.Length * 8;
+   //             return false;
+   //         }
+
+			if (!isSequenceEqual)
+			{
+				// don't mark the packet as done... it might be used elsewhere
+				_glueBits += packet.Length * 8;
+				return false;
+			}
 
             if (!_pagesSeen.Contains((_lastPageSeen = packet.PageSequenceNumber))) _pagesSeen.Add(_lastPageSeen);
 
@@ -222,10 +248,33 @@ namespace NVorbis
 
         bool LoadComments(DataPacket packet)
         {
-            if (!packet.ReadBytes(7).SequenceEqual(new byte[] { 0x03, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 }))
-            {
-                return false;
-            }
+			bool isSequenceEqual = true;
+			byte[] packetComparer = new byte[] { 0x03, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 };
+			byte[] packetData = packet.ReadBytes(7);
+
+            if (packetComparer.Length != packetData.Length)
+			{
+				isSequenceEqual = false;
+			}
+			else
+			{
+				for (int i = 0; i < packetData.Length; i++)
+				{
+					if (packetData[i] != packetComparer[i])
+					{
+						isSequenceEqual = false;
+						break;
+					}
+				}
+			}
+
+			//if (!packet.ReadBytes(7).SequenceEqual(new byte[] { 0x03, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 }))
+			//{
+			//    return false;
+			//}
+
+			if (!isSequenceEqual)
+				return false;
 
             if (!_pagesSeen.Contains((_lastPageSeen = packet.PageSequenceNumber))) _pagesSeen.Add(_lastPageSeen);
 
@@ -247,10 +296,33 @@ namespace NVorbis
 
         bool LoadBooks(DataPacket packet)
         {
-            if (!packet.ReadBytes(7).SequenceEqual(new byte[] { 0x05, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 }))
-            {
-                return false;
-            }
+			bool isSequenceEqual = true;
+			byte[] packetComparer = new byte[] { 0x05, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 };
+			byte[] packetData = packet.ReadBytes(7);
+
+			if (packetComparer.Length != packetData.Length)
+			{
+				isSequenceEqual = false;
+			}
+			else
+			{
+				for (int i = 0; i < packetData.Length; i++)
+				{
+					if (packetData[i] != packetComparer[i])
+					{
+						isSequenceEqual = false;
+						break;
+					}
+				}
+			}
+
+			//if (!packet.ReadBytes(7).SequenceEqual(new byte[] { 0x05, 0x76, 0x6f, 0x72, 0x62, 0x69, 0x73 }))
+   //         {
+   //             return false;
+   //         }
+
+			if (!isSequenceEqual)
+				return false;
 
             if (!_pagesSeen.Contains((_lastPageSeen = packet.PageSequenceNumber))) _pagesSeen.Add(_lastPageSeen);
 
@@ -958,10 +1030,18 @@ namespace NVorbis
         {
             get
             {
-                var samples = _sampleCountHistory.Sum();
+				//var samples = _sampleCountHistory.Sum();
+				int samples = 0;
+				foreach (int s in _sampleCountHistory)
+					samples += s;
+
                 if (samples > 0)
                 {
-                    return (int)((long)_bitsPerPacketHistory.Sum() * _sampleRate / samples);
+					int bits = 0;
+					foreach (int b in _bitsPerPacketHistory)
+						bits += b;
+
+                    return (int)((long)bits * _sampleRate / samples);
                 }
                 else
                 {
